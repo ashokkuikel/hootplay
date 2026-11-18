@@ -182,6 +182,26 @@
     };
   }
 
+  // The player can decide the device is too slow and save a "performance cap"
+  // that pins every later video to a low resolution (as low as 360p) for
+  // weeks. Inside this shell that judgement is unreliable, so the cap is
+  // cleared at start-up and never saved. Quality the viewer picks by hand is
+  // a different setting and is left alone.
+  var PERFORMANCE_CAP_KEY = /^yt-player-performance-cap/;
+  if (!disabled) {
+    try {
+      for (var i = localStorage.length - 1; i >= 0; i--) {
+        var key = localStorage.key(i);
+        if (PERFORMANCE_CAP_KEY.test(key)) localStorage.removeItem(key);
+      }
+      var nativeSetItem = Storage.prototype.setItem;
+      Storage.prototype.setItem = function (key, value) {
+        if (PERFORMANCE_CAP_KEY.test(String(key))) return;
+        return nativeSetItem.call(this, key, value);
+      };
+    } catch (e) {}
+  }
+
   // ---- Host integration -------------------------------------------------
 
   // Remote buttons forwarded from the Android side (Back, media keys).
