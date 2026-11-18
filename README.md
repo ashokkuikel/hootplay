@@ -48,6 +48,29 @@ adb connect <TV-IP>:5555
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
+## Remote shortcut button (optional)
+
+Some remotes have a dedicated video-app button. Hootplay includes an optional
+service that opens Hootplay when that button is pressed. It is off by default.
+
+To switch it on, enable **Hootplay remote button** under the TV's
+Accessibility settings, or over adb (keep any services already listed, separated
+by `:`):
+
+```sh
+adb shell settings put secure enabled_accessibility_services app.hootplay/app.hootplay.ShortcutKeyService
+```
+
+The service only looks at the scan code of remote key presses and never reads
+what is on screen. Notes:
+
+- Whatever already answers that button on your TV will usually still run as
+  well; Hootplay re-opens itself a moment later so it ends up in front.
+- Some TVs block services from starting until the app is allowed to auto-start.
+  On TCL sets: `adb shell cmd appops set app.hootplay APP_AUTO_START allow`.
+- The recognised scan codes are listed in `ShortcutKeyService.java`; add your
+  remote's code there if its button is not picked up.
+
 ## Privacy
 
 The app has no servers, analytics, or telemetry. Anything entered into the
