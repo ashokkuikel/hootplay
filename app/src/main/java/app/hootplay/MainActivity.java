@@ -68,7 +68,9 @@ public class MainActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        // The screen is kept awake only while a video is playing (see
+        // Bridge.setPlaying), so the TV's screensaver and sleep timer still
+        // work on menus and when playback is paused.
 
         // Debug builds can be inspected from chrome://inspect on a computer.
         boolean debuggable = (getApplicationInfo().flags
@@ -354,6 +356,18 @@ public class MainActivity extends Activity {
         @JavascriptInterface
         public void exit() {
             runOnUiThread(MainActivity.this::finish);
+        }
+
+        @JavascriptInterface
+        public void setPlaying(boolean playing) {
+            runOnUiThread(() -> {
+                if (playing) {
+                    getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                } else {
+                    getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+                }
+                Log.i(TAG, "Keep screen on: " + playing);
+            });
         }
     }
 }

@@ -190,6 +190,25 @@
     if (window.HootplayHost) window.HootplayHost.exit();
   };
 
+  // Keep the TV awake only while a video the viewer opened is playing. Menus,
+  // home-screen previews and paused or finished videos let the TV's own
+  // screensaver and sleep timer take over.
+  var keepingAwake = false;
+  setInterval(function () {
+    var playing = false;
+    if (/\/watch/.test(location.hash)) {
+      var videos = document.querySelectorAll('video');
+      for (var i = 0; i < videos.length; i++) {
+        var v = videos[i];
+        if (!v.paused && !v.ended && v.readyState > 2) playing = true;
+      }
+    }
+    if (playing !== keepingAwake && window.HootplayHost && window.HootplayHost.setPlaying) {
+      keepingAwake = playing;
+      window.HootplayHost.setPlaying(playing);
+    }
+  }, 2000);
+
   window.addEventListener('load', function () {
     console.log('[Hootplay] loaded ' + location.href + ' viewport ' +
       innerWidth + 'x' + innerHeight + ' dpr ' + devicePixelRatio);
