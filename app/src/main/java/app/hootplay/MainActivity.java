@@ -72,8 +72,8 @@ public class MainActivity extends Activity {
 
     private static final int SPLASH_COLOR = 0xFF15132B;
     private static final long SPLASH_REVEAL_MS = 1100;
-    private static final long SPLASH_MIN_MS = 6000;
-    private static final long SPLASH_MAX_MS = 12000;
+    private static final long SPLASH_MIN_MS = 2500;
+    private static final long SPLASH_MAX_MS = 8000;
 
     private static final String SPLASH_NOTICE =
             "Hootplay is an independent, unofficial app. It is not affiliated with, endorsed by "

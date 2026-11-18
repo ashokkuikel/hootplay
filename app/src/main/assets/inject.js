@@ -65,11 +65,18 @@
     var response = obj.streamingData ? obj : obj.playerResponse;
     var data = response && response.streamingData;
     if (!data || !Array.isArray(data.adaptiveFormats)) return;
-    var kept = data.adaptiveFormats.filter(function (f) {
-      return !f.height || f.height <= PREVIEW_MAX_HEIGHT;
+    // Previews get exactly one resolution: the largest that fits under the
+    // cap. Some TV video drivers crash when a preview changes resolution
+    // part-way through, so the player is given nothing to switch to.
+    var height = 0;
+    data.adaptiveFormats.forEach(function (f) {
+      if (f.height && f.height <= PREVIEW_MAX_HEIGHT && f.height > height) height = f.height;
     });
-    var hasVideo = kept.some(function (f) { return f.height; });
-    if (hasVideo && kept.length < data.adaptiveFormats.length) {
+    if (!height) return;
+    var kept = data.adaptiveFormats.filter(function (f) {
+      return !f.height || f.height === height;
+    });
+    if (kept.length < data.adaptiveFormats.length) {
       data.adaptiveFormats = kept;
       response.__hootplayPreview = true;
     }
