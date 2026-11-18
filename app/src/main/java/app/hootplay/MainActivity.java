@@ -84,6 +84,8 @@ public class MainActivity extends Activity {
 
     private WebView web;
     private View splash;
+    private FrameLayout root;
+    private boolean wasStopped;
     private long splashShownAt;
     private final Handler handler = new Handler(Looper.getMainLooper());
     private String injectScript;
@@ -103,10 +105,10 @@ public class MainActivity extends Activity {
 
         web = new WebView(this);
         web.setBackgroundColor(Color.BLACK);
-        FrameLayout root = new FrameLayout(this);
+        root = new FrameLayout(this);
         root.addView(web, new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
-        if (savedInstanceState == null) root.addView(createSplash());
+        root.addView(createSplash());
         setContentView(root);
         hideSystemBars();
 
@@ -348,6 +350,23 @@ public class MainActivity extends Activity {
     }
 
     @Override
+    protected void onStop() {
+        super.onStop();
+        wasStopped = true;
+    }
+
+    /** Coming back to an app that was left running shows the splash again. */
+    @Override
+    protected void onStart() {
+        super.onStart();
+        if (wasStopped && splash == null) {
+            root.addView(createSplash());
+            hideSplash();
+        }
+        wasStopped = false;
+    }
+
+    @Override
     protected void onPause() {
         super.onPause();
         web.onPause();
@@ -406,6 +425,7 @@ public class MainActivity extends Activity {
         reveal.setStartDelay(150);
         reveal.start();
 
+        handler.removeCallbacksAndMessages(null);
         splash = layer;
         splashShownAt = SystemClock.uptimeMillis();
         handler.postDelayed(this::removeSplash, SPLASH_MAX_MS);
