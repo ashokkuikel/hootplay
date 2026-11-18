@@ -1,10 +1,16 @@
 package app.hootplay;
 
+import android.animation.ObjectAnimator;
 import android.app.Activity;
 import android.graphics.Bitmap;
 import android.graphics.Color;
+import android.graphics.drawable.ClipDrawable;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Looper;
+import android.os.SystemClock;
 import android.util.Log;
+import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.WindowManager;
@@ -17,6 +23,9 @@ import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
+import android.widget.FrameLayout;
+import android.widget.ImageView;
+import android.widget.TextView;
 
 import androidx.webkit.WebViewCompat;
 import androidx.webkit.WebViewFeature;
@@ -61,7 +70,22 @@ public class MainActivity extends Activity {
             "/ptracking",
     };
 
+    private static final int SPLASH_COLOR = 0xFF15132B;
+    private static final long SPLASH_REVEAL_MS = 1100;
+    private static final long SPLASH_MIN_MS = 6000;
+    private static final long SPLASH_MAX_MS = 12000;
+
+    private static final String SPLASH_NOTICE =
+            "Hootplay is an independent, unofficial app. It is not affiliated with, endorsed by "
+            + "or sponsored by Google LLC or YouTube.\n"
+            + "YouTube is a trademark of Google LLC. All videos, names and logos shown belong to "
+            + "their respective owners.\n"
+            + "Hootplay \u00A9 2026 The project authors. Released under the MIT License.";
+
     private WebView web;
+    private View splash;
+    private long splashShownAt;
+    private final Handler handler = new Handler(Looper.getMainLooper());
     private String injectScript;
     private boolean injectAtPageStart;
 
@@ -79,7 +103,11 @@ public class MainActivity extends Activity {
 
         web = new WebView(this);
         web.setBackgroundColor(Color.BLACK);
-        setContentView(web);
+        FrameLayout root = new FrameLayout(this);
+        root.addView(web, new FrameLayout.LayoutParams(
+                FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT));
+        if (savedInstanceState == null) root.addView(createSplash());
+        setContentView(root);
         hideSystemBars();
 
         WebSettings s = web.getSettings();
@@ -118,6 +146,11 @@ public class MainActivity extends Activity {
                             new ByteArrayInputStream(new byte[0]));
                 }
                 return null;
+            }
+
+            @Override
+            public void onPageFinished(WebView view, String url) {
+                hideSplash();
             }
 
             @Override
@@ -335,8 +368,66 @@ public class MainActivity extends Activity {
 
     @Override
     protected void onDestroy() {
+        handler.removeCallbacksAndMessages(null);
         web.destroy();
         super.onDestroy();
+    }
+
+    /**
+     * Start-up screen: the Hootplay banner wipes in from left to right over
+     * the loading page, then fades away once YouTube is ready.
+     */
+    private View createSplash() {
+        FrameLayout layer = new FrameLayout(this);
+        layer.setBackgroundColor(SPLASH_COLOR);
+
+        ClipDrawable banner = new ClipDrawable(getDrawable(R.drawable.banner),
+                Gravity.START, ClipDrawable.HORIZONTAL);
+        ImageView image = new ImageView(this);
+        image.setImageDrawable(banner);
+        float dp = getResources().getDisplayMetrics().density;
+        layer.addView(image, new FrameLayout.LayoutParams(
+                (int) (480 * dp), (int) (270 * dp), Gravity.CENTER));
+
+        TextView notice = new TextView(this);
+        notice.setText(SPLASH_NOTICE);
+        notice.setTextColor(0xB3FFFFFF);
+        notice.setTextSize(12);
+        notice.setGravity(Gravity.CENTER_HORIZONTAL);
+        notice.setLineSpacing(0f, 1.3f);
+        FrameLayout.LayoutParams noticeParams = new FrameLayout.LayoutParams(
+                (int) (760 * dp), FrameLayout.LayoutParams.WRAP_CONTENT,
+                Gravity.BOTTOM | Gravity.CENTER_HORIZONTAL);
+        noticeParams.bottomMargin = (int) (36 * dp);
+        layer.addView(notice, noticeParams);
+
+        ObjectAnimator reveal = ObjectAnimator.ofInt(banner, "level", 0, 10000);
+        reveal.setDuration(SPLASH_REVEAL_MS);
+        reveal.setStartDelay(150);
+        reveal.start();
+
+        splash = layer;
+        splashShownAt = SystemClock.uptimeMillis();
+        handler.postDelayed(this::removeSplash, SPLASH_MAX_MS);
+        return layer;
+    }
+
+    /** Called when the page has loaded; keeps the banner up for a minimum time. */
+    private void hideSplash() {
+        if (splash == null) return;
+        long remaining = SPLASH_MIN_MS - (SystemClock.uptimeMillis() - splashShownAt);
+        handler.postDelayed(this::removeSplash, Math.max(0, remaining));
+    }
+
+    private void removeSplash() {
+        final View layer = splash;
+        if (layer == null) return;
+        splash = null;
+        layer.animate().alpha(0f).setDuration(350).withEndAction(() -> {
+            if (layer.getParent() instanceof FrameLayout) {
+                ((FrameLayout) layer.getParent()).removeView(layer);
+            }
+        }).start();
     }
 
     private String readAsset(String name) {
